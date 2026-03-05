@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RPG Social Engine</title>
+
+<style>
+body{
+font-family:Arial;
+background:#1e1e2f;
+color:white;
+margin:0;
+display:flex;
+height:100vh;
+}
+
+#left{
+width:300px;
+background:#2a2a40;
+padding:10px;
+overflow:auto;
+}
+
+#chatArea{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+#messages{
+flex:1;
+padding:10px;
+overflow:auto;
+}
+
+.message{
+margin:5px 0;
+padding:5px;
+background:#333;
+border-radius:5px;
+}
+
+img.profile{
+width:40px;
+height:40px;
+border-radius:50%;
+vertical-align:middle;
+margin-right:5px;
+}
+
+input, select, button{
+margin:3px;
+padding:5px;
+}
+
+#weddingScene{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.9);
+display:none;
+align-items:center;
+justify-content:center;
+flex-direction:column;
+text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div id="left">
+
+<h3>Criar Personagem</h3>
+
+<input id="nome" placeholder="Nome"><br>
+
+<select id="genero">
+<option value="masculino">Masculino</option>
+<option value="feminino">Feminino</option>
+<option value="outro">Outro</option>
+</select><br>
+
+<select id="personalidade">
+<option value="romantico">Romântico</option>
+<option value="ciumento">Ciumento</option>
+<option value="calmo">Calmo</option>
+<option value="intenso">Intenso</option>
+</select><br>
+
+<input type="file" id="foto"><br>
+
+<button onclick="criarPersonagem()">Criar</button>
+
+<hr>
+
+<h3>Personagens</h3>
+<div id="listaPersonagens"></div>
+
+<hr>
+
+<button onclick="iniciarCasamento()">Cena de Casamento</button>
+
+</div>
+
+<div id="chatArea">
+
+<div id="messages"></div>
+
+<div style="padding:10px;">
+<input id="chatInput" placeholder="Digite..." style="width:80%;">
+<button onclick="enviar()">Enviar</button>
+</div>
+
+</div>
+
+<div id="weddingScene">
+<h1>💍 Casamento 💍</h1>
+<p>O padre declara união...</p>
+<div id="weddingText"></div>
+<button onclick="fecharCasamento()">Fechar</button>
+</div>
+
+<script>
+
+let personagens = JSON.parse(localStorage.getItem("personagens")) || [];
+let tempo = "dia";
+
+function salvar(){
+localStorage.setItem("personagens", JSON.stringify(personagens));
+}
+
+function criarPersonagem(){
+
+let nome = document.getElementById("nome").value;
+let genero = document.getElementById("genero").value;
+let personalidade = document.getElementById("personalidade").value;
+let fotoInput = document.getElementById("foto");
+
+if(!nome) return;
+
+let reader = new FileReader();
+reader.onload = function(){
+
+let personagem = {
+nome,
+genero,
+personalidade,
+foto: reader.result,
+relacao: 0,
+ciume: 0,
+casado: false
+};
+
+personagens.push(personagem);
+salvar();
+atualizarLista();
+};
+
+if(fotoInput.files[0]){
+reader.readAsDataURL(fotoInput.files[0]);
+}else{
+alert("Escolha uma foto");
+}
+}
+
+function atualizarLista(){
+let lista = document.getElementById("listaPersonagens");
+lista.innerHTML="";
+personagens.forEach(p=>{
+lista.innerHTML += `<div>${p.nome} ❤️${p.relacao} 😡${p.ciume}</div>`;
+});
+}
+
+function enviar(){
+let texto = document.getElementById("chatInput").value;
+if(!texto) return;
+
+adicionarMensagem("Você", texto);
+
+personagens.forEach(p=>responder(p, texto));
+
+document.getElementById("chatInput").value="";
+}
+
+function adicionarMensagem(nome, texto, foto){
+let div = document.createElement("div");
+div.className="message";
+
+if(foto){
+div.innerHTML=`<img src="${foto}" class="profile">${nome}: ${texto}`;
+}else{
+div.innerHTML=`${nome}: ${texto}`;
+}
+
+document.getElementById("messages").appendChild(div);
+}
+
+function responder(p, texto){
+
+let resposta="";
+
+if(texto.includes("amo")){
+p.relacao+=10;
+resposta="Eu também sinto algo forte...";
+}
+
+if(texto.includes("beij")){
+p.relacao+=5;
+p.ciume+=2;
+resposta="Isso me deixa nervoso(a)...";
+}
+
+if(texto.includes("casar")){
+if(p.relacao>30){
+resposta="Eu aceito casar com você!";
+}else{
+resposta="Ainda não estou pronto(a)...";
+}
+}
+
+if(p.personalidade==="ciumento" && p.ciume>10){
+resposta="Eu vi você falando com outra pessoa!";
+}
+
+if(p.relacao>50 && Math.random()>0.6){
+resposta="Eu acho que estou apaixonado(a)...";
+}
+
+if(resposta){
+adicionarMensagem(p.nome, resposta, p.foto);
+}
+
+salvar();
+atualizarLista();
+}
+
+function iniciarCasamento(){
+
+let casal = personagens.filter(p=>p.relacao>40);
+
+if(casal.length<2){
+alert("Precisa de dois com relação alta!");
+return;
+}
+
+let noivo = casal[0];
+let noiva = casal[1];
+
+document.getElementById("weddingScene").style.display="flex";
+document.getElementById("weddingText").innerHTML=`
+<img src="${noivo.foto}" class="profile">
+❤️
+<img src="${noiva.foto}" class="profile">
+<p>${noivo.nome} e ${noiva.nome} agora estão casados!</p>
+<p>O padre sorri.</p>
+`;
+
+noivo.casado=true;
+noiva.casado=true;
+
+if(Math.random()>0.6){
+let rival = personagens.find(p=>p!==noivo && p!==noiva);
+if(rival){
+document.getElementById("weddingText").innerHTML+=
+`<p>⚡ ${rival.nome} invade a cerimônia com ciúmes!</p>`;
+}
+}
+
+salvar();
+}
+
+function fecharCasamento(){
+document.getElementById("weddingScene").style.display="none";
+}
+
+setInterval(()=>{
+tempo = tempo==="dia"?"noite":"dia";
+personagens.forEach(p=>{
+if(tempo==="noite"){
+p.ciume+=1;
+}else{
+p.relacao+=1;
+}
+});
+salvar();
+atualizarLista();
+},15000);
+
+atualizarLista();
+
+</script>
+
+</body>
+</html>
